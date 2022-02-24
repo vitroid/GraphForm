@@ -90,6 +90,8 @@ def nofill():
 def fill(A, B=999, C=999, D=1):
     global FILLCOLOR, FILL
     FILL = True
+    if isinstance(A, list) or isinstance(A, tuple):
+        A, B, C, D = A
     if B == 999:
         B = A
         C = A
@@ -166,9 +168,15 @@ def animate(setup, draw, video=0):
             stdin=subprocess.PIPE,
             stderr=subprocess.PIPE)
     while True:
-        pygame.event.get()
-        pressed = pygame.key.get_pressed()
-        if pressed[K_q]:
+        events = pygame.event.get()
+        # logger.debug(events)
+        keydown = False
+        for ev in events:
+            if ev.type == pygame.KEYDOWN:
+                keydown = True
+                key = ev.unicode
+        # pressed = pygame.key.get_pressed()
+        if key == "q": #pressed[K_q]:
             break
         MOUSEX, MOUSEY = pygame.mouse.get_pos()
         mousedown = pygame.mouse.get_pressed()[0] # left button
@@ -188,6 +196,26 @@ def animate(setup, draw, video=0):
         pass
 
 
+# quick hack
+def beginpath(x, y):
+    global _points
+    _points = [(x,y)]
+
+def lineto(x, y):
+    global _points
+    _points.append((x,y))
+
+def endpath():
+    global _points
+    pygame.draw.polygon(SCREEN, FILLCOLOR, _points, width=0)
+    pygame.draw.polygon(SCREEN, STROKECOLOR, _points, width=STROKEWIDTH)
+
+
+
+# just deny it for now
+def text(s, x, y):
+    pass
+
 def setup():
     # default setup()
     size(500, 500)
@@ -201,3 +229,7 @@ def wait_q():
         if pressed[K_q]:
             break
         pygame.time.wait(100)
+
+
+def color(A, B, C, D):
+    return A, B, C, D

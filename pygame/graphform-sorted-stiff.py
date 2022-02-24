@@ -1,4 +1,8 @@
 from math import *
+from nodebox_wrapper import *  # pretend the Nodebox
+from logging import getLogger, basicConfig, INFO, DEBUG
+import nodebox_wrapper
+
 speed(30)
 
 R0 = 200
@@ -31,7 +35,7 @@ for i in range(0, L - (m - 1)):
     pairs.append((i, i + (m - 1)))
 for i in range(0, L - m):
     pairs.append((i, i + m))
-for i in range(0, L / 2):
+for i in range(0, L // 2):
     pairs.append((i, i * 2 + L))
     pairs.append((i + (m - 1), i * 2 + L))
     pairs.append((i + m, i * 2 + L))
@@ -83,7 +87,7 @@ def setcolor(triangle, a, b, c):
 def drawfaces_(faces, vertices):
     stroke(0)
     k = faces.keys()
-    for face in sorted(k, cmp=lambda x, y: cmp(faces[y]["Z"], faces[x]["Z"])):
+    for face in sorted(k, key=lambda x: faces[x]["Z"]):
         fill(faces[face]["C"])
         va, vb, vc = face
         a = vertices[va]
@@ -171,7 +175,7 @@ def combinations(elems, n):
         tmp = list(elems)
         while len(tmp) > 0:
             head = tmp.pop(0)
-            print head, tmp
+            print (head, tmp)
             sub = combinations(tmp, n - 1)
             # print "sub", sub
             for i in sub:
@@ -284,33 +288,41 @@ def draw():
         drawedges(edges)
         drawnodes(vertices)
     # マウスでノードをひっぱる。
-    if mousedown:
+    if nodebox_wrapper.mousedown:
         if hold is None:
             min = 100000.0
             nod = None
             for vertex in vertices.values():
-                dx = MOUSEX - vertex.position[0]
-                dy = MOUSEY - vertex.position[1]
+                dx = nodebox_wrapper.MOUSEX - vertex.position[0]
+                dy = nodebox_wrapper.MOUSEY - vertex.position[1]
                 d = dx**2 + dy**2
                 if d < min:
                     min = d
                     hold = vertex
-        dx = MOUSEX - hold.position[0]
-        dy = MOUSEY - hold.position[1]
+        dx = nodebox_wrapper.MOUSEX - hold.position[0]
+        dy = nodebox_wrapper.MOUSEY - hold.position[1]
         hold.position[0] += dx / 2
         hold.position[1] += dy / 2
     else:
         hold = None
 
-    if keydown:
+    if nodebox_wrapper.keydown:
         if not keyhold:
-            if key == "s":
+            if nodebox_wrapper.key == "s":
                 canvas.save("graphform.pdf")
-                print "Saved"
-            if key == "r":
+                print ("Saved")
+            if nodebox_wrapper.key == "r":
                 repulse = not repulse
-            if key == "f":
+            if nodebox_wrapper.key == "f":
                 face = not face
         keyhold = True
     else:
         keyhold = None
+
+
+# basicConfig(level=INFO, format="%(levelname)s %(message)s")
+basicConfig(level=INFO, format="%(levelname)s %(message)s")
+logger = getLogger()
+logger.debug("Debug mode.")
+
+animate(setup, draw)

@@ -8,6 +8,21 @@ import networkx as nx
 from attrdict import AttrDict
 
 
+class Interaction:
+    def __init__(self, forcefunc):
+        self.func = forcefunc
+
+    def force(self, pairs, vertices):
+        for a, b in pairs:
+            vertex0 = vertices[a]
+            vertex1 = vertices[b]
+            d = vertex0.position - vertex1.position
+            r = np.linalg.norm(d)
+            f = self.func(r) * d / r
+            vertex0.force -= f
+            vertex1.force += f
+
+
 def debug(func):
     def wrapper(*args, **kwargs):
         logger = getLogger()
@@ -109,6 +124,20 @@ class GraphForm():
         # self.KRmax = 180
         self.KR = 180
 
+        self.attractive = Interaction(lambda r: self.K * (r - self.R0))
+
+        def repel(r, K, rmin):
+            """
+            force function for replusive pairs
+            """
+            if r < rmin:
+                return K * (r - rmin)
+            return 0
+
+        self.repulsive = Interaction(
+            lambda r: repel(
+                r, self.KR, self.R0 * 1.2))
+
         self.frames = 0
 
         labels = set()
@@ -121,6 +150,11 @@ class GraphForm():
         for i in labels:
             #position, velocity, force
             self.vertices[i] = Vertex(i)
+
+        self.reps = [
+            (i, j) for i, j in it.combinations(
+                labels, 2) if not self.g.has_edge(
+                i, j)]
 
         for i, j in self.g.edges():
             for v in self.g[j]:
@@ -167,28 +201,6 @@ class GraphForm():
                                                       self.decay)
         drawfaces_(self.triangles, self.vertices)
 
-    def force(self):
-        for a, b in self.g.edges():
-            vertex0 = self.vertices[a]
-            vertex1 = self.vertices[b]
-            d = vertex0.position - vertex1.position
-            r = np.linalg.norm(d)
-            f = self.K * (r - self.R0) * d / r
-            vertex0.force -= f
-            vertex1.force += f
-
-    def repulsiveforce(self, mul):
-        for a, b in it.combinations(self.g, 2):
-            if not self.g.has_edge(a, b):
-                vertex0 = self.vertices[a]
-                vertex1 = self.vertices[b]
-                d = vertex0.position - vertex1.position
-                r = np.linalg.norm(d)
-                if r < self.R0 * mul:
-                    f = self.KR * d / r
-                    vertex0.force += f
-                    vertex1.force -= f
-
     def drawedges(self):
         for a, b in self.g.edges():
             vertex0 = self.vertices[a].perspective()
@@ -209,19 +221,16 @@ class GraphForm():
         if self.frames == 100:
             self.repulse = 0
         self.decay += 1
-        self.force()
-        for vertex in self.vertices.values():
-            vertex.force2vel()
-            vertex.progress(0.05)
-            vertex.resetf()
+        self.attractive.force(self.g.edges(), self.vertices)
         if self.repulse:
             fill(0)
             no_stroke()
             text("Repulsive", 40, 40)
-            self.KR = 100  # self.KRmax - (self.KRmax - self.KR) * 0.9
-            self.repulsiveforce(1.2)
-        else:
-            self.KR *= 0.9
+            self.repulsive.force(self.reps, self.vertices)
+        for vertex in self.vertices.values():
+            vertex.force2vel()
+            vertex.progress(0.05)
+            vertex.resetf()
         stroke(0)
         if self.showface:
             self.drawfaces()

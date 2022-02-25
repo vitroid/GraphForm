@@ -262,12 +262,12 @@ def combinations(elems, n):
         tmp = list(elems)
         while len(tmp) > 0:
             head = tmp.pop(0)
-            print (head, tmp)
+            print(head, tmp)
             sub = combinations(tmp, n - 1)
-            print ("sub", sub)
+            print("sub", sub)
             for i in sub:
                 result.append(i + [head])
-    print (elems, n, "=>", result)
+    print(elems, n, "=>", result)
     return result
 
 
@@ -326,7 +326,6 @@ def edgeExists(edges, i, j):
     return (i, j) in edges or (j, i) in edges
 
 
-
 repulse = 0
 hold = None
 keyhold = None
@@ -337,6 +336,7 @@ vertices = dict()
 edges = dict()
 repulsive = dict()
 triangles = dict()
+
 
 def draw():
     global hold, keyhold, repulse, face, label, KR, decay, vertices, edges
@@ -398,9 +398,10 @@ def draw():
     else:
         keyhold = None
 
+
 def Render(pairs):
     labels = set()
-    for i,j in pairs:
+    for i, j in pairs:
         labels.add(i)
         labels.add(j)
     labels = list(labels)
@@ -410,7 +411,6 @@ def Render(pairs):
         vertices[i] = Vertex(i)
     for i in pairs:
         edges[i] = True
-
 
     for i, j in combinations(labels, 2):
         if not edgeExists(edges, i, j):
@@ -431,9 +431,9 @@ def main():
     logger = getLogger()
     logger.debug("Debug mode.")
 
-    pairs  = [("A","B"), ("B","C"), ("C","D"), ("D","E"), ("E","F"), ("Z","N"),
-            ("A","Z"), ("B","Z"), ("C","Z"), ("D","Z"), ("E","Z"), ("F","Z"),
-            ("A","N"), ("B","N"), ("C","N"), ("D","N"), ("E","N"), ("F","N"),]
+    pairs = [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "F"), ("Z", "N"),
+             ("A", "Z"), ("B", "Z"), ("C", "Z"), ("D", "Z"), ("E", "Z"), ("F", "Z"),
+             ("A", "N"), ("B", "N"), ("C", "N"), ("D", "N"), ("E", "N"), ("F", "N"), ]
     Render(pairs)
 
 

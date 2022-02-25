@@ -176,10 +176,10 @@ def animate(setup, draw, video=0):
                 keydown = True
                 key = ev.unicode
         # pressed = pygame.key.get_pressed()
-        if key == "q": #pressed[K_q]:
+        if key == "q":  # pressed[K_q]:
             break
         MOUSEX, MOUSEY = pygame.mouse.get_pos()
-        mousedown = pygame.mouse.get_pressed()[0] # left button
+        mousedown = pygame.mouse.get_pressed()[0]  # left button
         SCREEN.fill(BACKGROUND)
         draw()
         pygame.display.flip()  # 裏画面に描かれたものを表示する。
@@ -199,11 +199,13 @@ def animate(setup, draw, video=0):
 # quick hack
 def beginpath(x, y):
     global _points
-    _points = [(x,y)]
+    _points = [(x, y)]
+
 
 def lineto(x, y):
     global _points
-    _points.append((x,y))
+    _points.append((x, y))
+
 
 def endpath():
     global _points
@@ -214,10 +216,10 @@ def endpath():
         pygame.draw.polygon(SCREEN, STROKECOLOR, _points, width=STROKEWIDTH)
 
 
-
 # just deny it for now
 def text(s, x, y):
     pass
+
 
 def setup():
     # default setup()

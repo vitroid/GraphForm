@@ -7,6 +7,7 @@ import numpy as np
 import networkx as nx
 from attrdict import AttrDict
 
+
 def debug(func):
     def wrapper(*args, **kwargs):
         logger = getLogger()
@@ -14,14 +15,15 @@ def debug(func):
         func(*args, **kwargs)
     return wrapper
 
+
 def Depth(pi, pj, pk):
     return pi[2] + pj[2] + pk[2]
 
 
 def ArrangedColor(a, b, c, decay):
     logger = getLogger()
-    ab = b-a
-    ac = c-a
+    ab = b - a
+    ac = c - a
     # normal vector
     n = np.cross(ab, ac)
     n /= np.linalg.norm(n)
@@ -36,15 +38,18 @@ def ArrangedColor(a, b, c, decay):
     return Color(hue, 0.8, abs(n[2]) * 0.4 + 0.6, alpha=opacity)
 
 
-
-
-
+def perspective(v, eyepos=None):
+    if eyepos is None:
+        return v[:2]
+    zoom = eyepos / (eyepos - v[2])
+    return v[:2] * zoom
 
 
 class Vertex():
     """
     A vertex is a point mass with a label.
     """
+
     def __init__(self, label, pos=None):
         self.label = str(label)
         if pos is None:
@@ -54,10 +59,8 @@ class Vertex():
         self.velocity = np.zeros(3)
         self.force = np.zeros(3)
 
-    def perspective(self, zoom=0.0):
-        if zoom == 0:
-            zoom = 1000 / (1000 - self.position[2])
-        return self.position[:2] * zoom
+    def perspective(self, eyepos=None):
+        return perspective(self.position, eyepos)
 
     def force2vel(self):
         self.velocity = self.force + 0
@@ -79,12 +82,11 @@ def drawfaces_(faces, vertices):
     for face in sorted(k, key=lambda x: -faces[x].depth):
         # triangle = PShape()
         va, vb, vc = face
-        a = vertices[va].perspective(1.0)
-        b = vertices[vb].perspective(1.0)
-        c = vertices[vc].perspective(1.0)
+        a = vertices[va].perspective()
+        b = vertices[vb].perspective()
+        c = vertices[vc].perspective()
         fill(faces[face].color)
-        triangle(a,b,c)
-
+        triangle(a, b, c)
 
 
 class GraphForm():
@@ -93,11 +95,14 @@ class GraphForm():
         self.repulse = 1
         self.hold = None
         self.keyhold = None
-        self.face = True
-        self.label = True
+        self.showface = True
+        self.showlabel = True
+        self.showtetrag = True
         self.decay = 0
         self.vertices = dict()
         self.triangles = dict()
+        self.tetrahedra = set()
+        self.tetrag = nx.Graph()  # adjacency graph of tetrahedra
 
         self.R0 = 200
         self.K = 2.5
@@ -107,7 +112,7 @@ class GraphForm():
         self.frames = 0
 
         labels = set()
-        for i,j in pairs:
+        for i, j in pairs:
             labels.add(i)
             labels.add(j)
         labels = list(labels)
@@ -121,15 +126,46 @@ class GraphForm():
             for v in self.g[j]:
                 if v in self.g[i]:
                     s = tuple(sorted([i, j, v]))
-                    self.triangles[s] = AttrDict({"depth": None, "color": None})
+                    self.triangles[s] = AttrDict(
+                        {"depth": None, "color": None})
+
+        for i, j, k in self.triangles:
+            adj = tuple(set(self.g[i]) & set(self.g[j]) & set(self.g[k]))
+            assert len(adj) <= 2
+            pair = []
+            for l in adj:
+                s = tuple(sorted([i, j, k, l]))
+                self.tetrahedra.add(s)
+                pair.append(s)
+            if len(pair) == 2:
+                self.tetrag.add_edge(*pair)
+
+    def drawtetranetwork(self):
+        tpos = dict()
+        for tetra in self.tetrag:
+            com = np.zeros(3)
+            for v in tetra:
+                com += self.vertices[v].position
+            tpos[tetra] = com / 4
+        for edge in self.tetrag.edges:
+            t1, t2 = edge
+            p1 = perspective(tpos[t1])
+            p2 = perspective(tpos[t2])
+            stroke(1 / 6, 1, 0.8)  # yellow
+            stroke_weight(3)
+            line(p1, p2)
 
     def drawfaces(self):
         for i, j, k in self.triangles.keys():
-            self.triangles[(i, j, k)].depth = Depth( self.vertices[i].position, self.vertices[j].position, self.vertices[k].position)
-            self.triangles[(i, j, k)].color = ArrangedColor(self.vertices[i].position,
-                    self.vertices[j].position, self.vertices[k].position, self.decay)
+            self.triangles[(i, j, k)].depth = Depth(
+                self.vertices[i].position, self.vertices[j].position, self.vertices[k].position)
+            self.triangles[(i,
+                            j,
+                            k)].color = ArrangedColor(self.vertices[i].position,
+                                                      self.vertices[j].position,
+                                                      self.vertices[k].position,
+                                                      self.decay)
         drawfaces_(self.triangles, self.vertices)
-
 
     def force(self):
         for a, b in self.g.edges():
@@ -141,10 +177,9 @@ class GraphForm():
             vertex0.force -= f
             vertex1.force += f
 
-
     def repulsiveforce(self, mul):
         for a, b in it.combinations(self.g, 2):
-            if not self.g.has_edge(a,b):
+            if not self.g.has_edge(a, b):
                 vertex0 = self.vertices[a]
                 vertex1 = self.vertices[b]
                 d = vertex0.position - vertex1.position
@@ -154,24 +189,22 @@ class GraphForm():
                     vertex0.force += f
                     vertex1.force -= f
 
-
     def drawedges(self):
         for a, b in self.g.edges():
-            vertex0 = self.vertices[a].perspective(1.0)
-            vertex1 = self.vertices[b].perspective(1.0)
+            vertex0 = self.vertices[a].perspective()
+            vertex1 = self.vertices[b].perspective()
             line(vertex0, vertex1)
-
 
     def drawlabels(self):
         for v in self.vertices.values():
-            vv = v.perspective(1.0)
+            vv = v.perspective()
             fill(0)
             no_stroke()
             text(v.label, vv[0], vv[1])
 
     def draw(self):
         logger = getLogger()
-        background(1, 0, 1) # hsb
+        background(1, 0, 1)  # hsb
         self.frames += 1
         if self.frames == 100:
             self.repulse = 0
@@ -185,17 +218,19 @@ class GraphForm():
             fill(0)
             no_stroke()
             text("Repulsive", 40, 40)
-            self.KR = 100 # self.KRmax - (self.KRmax - self.KR) * 0.9
+            self.KR = 100  # self.KRmax - (self.KRmax - self.KR) * 0.9
             self.repulsiveforce(1.2)
         else:
             self.KR *= 0.9
         stroke(0)
-        if self.face:
+        if self.showface:
             self.drawfaces()
         else:
             self.drawedges()
-        if self.label:
+        if self.showlabel:
             self.drawlabels()
+        if self.showtetrag:
+            self.drawtetranetwork()
         # # マウスでノードをひっぱる。
         if mouse_is_pressed:
             decay = 0
@@ -203,14 +238,14 @@ class GraphForm():
                 min = 100000.0
                 nod = None
                 for vertex in self.vertices.values():
-                    pixel = vertex.perspective(1.0)
+                    pixel = vertex.perspective()
                     dx = mouse_x - pixel[0]
                     dy = mouse_y - pixel[1]
                     d = dx**2 + dy**2
                     if d < min:
                         min = d
                         self.hold = vertex
-            pixel = self.hold.perspective(1.0)
+            pixel = self.hold.perspective()
             dx = mouse_x - pixel[0]
             dy = mouse_y - pixel[1]
             self.hold.position[0] += dx / 2
@@ -229,9 +264,11 @@ class GraphForm():
                     else:
                         self.repulse -= 1
                 if key == "f":
-                    self.face = not self.face
+                    self.showface = not self.showface
                 if key == "l":
-                    self.label = not self.label
+                    self.showlabel = not self.showlabel
+                if key == "t":
+                    self.showtetrag = not self.showtetrag
                 if key == "q":
                     sys.exit(0)
             self.keyhold = True
@@ -244,16 +281,15 @@ class GraphForm():
         color_mode('HSB', 1, 1, 1, 1)
 
 
-
 if __name__ == "__main__":
     # basicConfig(level=INFO, format="%(levelname)s %(message)s")
     basicConfig(level=DEBUG, format="%(levelname)s %(message)s")
     logger = getLogger()
     logger.debug("Debug mode.")
 
-    pairs  = [("A","B"), ("B","C"), ("C","D"), ("D","E"), ("E","F"), ("Z","N"),
-            ("A","Z"), ("B","Z"), ("C","Z"), ("D","Z"), ("E","Z"), ("F","Z"),
-            ("A","N"), ("B","N"), ("C","N"), ("D","N"), ("E","N"), ("F","N"),]
+    pairs = [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "F"), ("Z", "N"),
+             ("A", "Z"), ("B", "Z"), ("C", "Z"), ("D", "Z"), ("E", "Z"), ("F", "Z"),
+             ("A", "N"), ("B", "N"), ("C", "N"), ("D", "N"), ("E", "N"), ("F", "N"), ]
     gf = GraphForm(pairs)
 
     draw = gf.draw

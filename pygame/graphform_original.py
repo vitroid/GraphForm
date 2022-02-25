@@ -199,7 +199,7 @@ def draw():
     # マウスでノードをひっぱる。
     logger.debug(nodebox_wrapper.mousedown)
     if nodebox_wrapper.mousedown:
-        logger.debug((MOUSEX,MOUSEY))
+        logger.debug((MOUSEX, MOUSEY))
         if hold is None:
             min = 100000.0
             nod = None

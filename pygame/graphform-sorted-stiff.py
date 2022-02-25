@@ -175,7 +175,7 @@ def combinations(elems, n):
         tmp = list(elems)
         while len(tmp) > 0:
             head = tmp.pop(0)
-            print (head, tmp)
+            print(head, tmp)
             sub = combinations(tmp, n - 1)
             # print "sub", sub
             for i in sub:
@@ -310,7 +310,7 @@ def draw():
         if not keyhold:
             if nodebox_wrapper.key == "s":
                 canvas.save("graphform.pdf")
-                print ("Saved")
+                print("Saved")
             if nodebox_wrapper.key == "r":
                 repulse = not repulse
             if nodebox_wrapper.key == "f":

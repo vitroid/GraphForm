@@ -107,7 +107,7 @@ def drawfaces_(faces, vertices):
 class GraphForm():
     @debug
     def __init__(self, pairs):
-        self.repulse = 1
+        self.repulse = 0
         self.hold = None
         self.keyhold = None
         self.showface = True
@@ -119,12 +119,15 @@ class GraphForm():
         self.tetrahedra = set()
         self.tetrag = nx.Graph()  # adjacency graph of tetrahedra
 
-        self.R0 = 200
-        self.K = 2.5
-        # self.KRmax = 180
-        self.KR = 180
+        K = 2.5
+        KR = 20
+        R0 = 200
+        #  立方体の一辺を1とすると面の対角線は√2、立方体の対角線は√3、隣接四面体間の距離は、√3/3
+        # 面の対角線を1とするので、
+        RT = R0 * (1 / 6)**0.5
+        KT = 20
 
-        self.attractive = Interaction(lambda r: self.K * (r - self.R0))
+        self.attractive = Interaction(lambda r: K * (r - R0))
 
         def repel(r, K, rmin):
             """
@@ -134,9 +137,7 @@ class GraphForm():
                 return K * (r - rmin)
             return 0
 
-        self.repulsive = Interaction(
-            lambda r: repel(
-                r, self.KR, self.R0 * 1.2))
+        self.repulsive = Interaction(lambda r: repel(r, KR, R0 * 1.2))
 
         self.frames = 0
 
@@ -173,6 +174,13 @@ class GraphForm():
                 pair.append(s)
             if len(pair) == 2:
                 self.tetrag.add_edge(*pair)
+
+        self.tetrepul = Interaction(lambda r: repel(r, KT, RT))
+
+        # virtual vertices for tetrahedra
+        self.vtet = dict()
+        for t in self.tetrag:
+            self.vtet[t] = Vertex(t)
 
     def drawtetranetwork(self):
         tpos = dict()
@@ -227,6 +235,23 @@ class GraphForm():
             no_stroke()
             text("Repulsive", 40, 40)
             self.repulsive.force(self.reps, self.vertices)
+
+        # 常に四面体同士は重ならないようにする。
+         # if self.showtetrag:
+        for vertex in self.vtet.values():
+            vertex.resetf()
+        for tetra, vertex in self.vtet.items():
+            com = np.zeros(3)
+            for v in tetra:
+                com += self.vertices[v].position
+            vertex.position = com / 4
+        self.tetrepul.force(it.combinations(self.vtet, 2), self.vtet)
+        # feedback the forces to its vertices
+        for tetra, vertex in self.vtet.items():
+            f = vertex.force
+            for v in tetra:
+                self.vertices[v].force += f
+
         for vertex in self.vertices.values():
             vertex.force2vel()
             vertex.progress(0.05)

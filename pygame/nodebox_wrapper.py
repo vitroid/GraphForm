@@ -207,8 +207,11 @@ def lineto(x, y):
 
 def endpath():
     global _points
-    pygame.draw.polygon(SCREEN, FILLCOLOR, _points, width=0)
-    pygame.draw.polygon(SCREEN, STROKECOLOR, _points, width=STROKEWIDTH)
+    # unfortunately, there is no easy way to alpha-blend it with pygame.
+    if FILL:
+        pygame.draw.polygon(SCREEN, FILLCOLOR, _points, width=0)
+    if STROKE:
+        pygame.draw.polygon(SCREEN, STROKECOLOR, _points, width=STROKEWIDTH)
 
 
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from graphform import GraphForm
 from p5 import *
 

@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from p5 import *
 from graphform import GraphForm
 pairs = [(0, 1), (0, 2), (0, 3), (0, 4), (0, 5), (0, 6), (0, 7),

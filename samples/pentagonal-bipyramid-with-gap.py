@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from p5 import *
 from graphform import GraphForm
 pairs = [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "F"), ("Z", "N"),

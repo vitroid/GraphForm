@@ -6,7 +6,9 @@ import sys
 import numpy as np
 import networkx as nx
 from attrdict import AttrDict
+from PIL.ImageFont import truetype
 
+__version__ = "0.1.1"
 
 class Interaction:
     def __init__(self, forcefunc):
@@ -194,7 +196,7 @@ class GraphForm():
             p1 = perspective(tpos[t1])
             p2 = perspective(tpos[t2])
             stroke(1 / 6, 1, 0.8)  # yellow
-            stroke_weight(3)
+            stroke_weight(4)
             line(p1, p2)
 
     def drawfaces(self):
@@ -289,9 +291,9 @@ class GraphForm():
 
         if key_is_pressed:
             if not self.keyhold:
-                # if nodebox_wrapper.key == "s":
-                #     canvas.save("graphform.pdf")
-                #     print ("Saved")
+                if key == "s":
+                    save("graphform.png")
+                    print ("Saved")
                 if key == "r":
                     if not self.repulse:
                         self.repulse = 1
@@ -309,10 +311,13 @@ class GraphForm():
         else:
             self.keyhold = None
 
+
     @debug
     def setup(self):
         size(512, 512)
         color_mode('HSB', 1, 1, 1, 1)
+        font = truetype("Arial.ttf", size=16)
+        text_font(font)
 
 
 if __name__ == "__main__":

@@ -1,20 +1,10 @@
 # GraphForm
 
-グラフ(連結性情報)を立体化する簡単なツールです。マウス操作で変形させることができます。
+This is a simple tool to make a graph (connectivity information) three-dimensional. It can be deformed by mouse operation.
 
 ## ToDos
 
-* ノードの反発ではなく、四面体重心の反発を実装すれば簡単にすむのではないか?
-* 四面体の間にすこしだけギャップを表示したい。
-* Native Pygame化?
-* トポロジーの分析をして表示する。
+* Show a little gap between the tetrahedra.
+* Native Pygame?
+* Analyze and display the topology.
 
-# Dones
-
-* 半透明 (p5py)
-* text()の実装(やっぱり必要) (p5py)
-* 四面体を識別 (p5py)
-* 四面体の重心結合(on/off) (p5py)
-* Native p5py化 (p5py)
-* ソートがうまくいってない件 (p5py)
-* NetworkX and numpy化? (もし速くなるなら) (p5py)

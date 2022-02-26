@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from logging import getLogger, basicConfig, INFO, DEBUG
 from p5 import *
 from graphform import GraphForm

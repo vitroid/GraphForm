@@ -4,7 +4,8 @@ This is a simple tool to make a graph (connectivity information) three-dimension
 
 ## ToDos
 
-* Show a little gap between the tetrahedra.
-* Native Pygame?
-* Analyze and display the topology.
+- Show a little gap between the tetrahedra.
+- Native Pygame?
+- Analyze and display the topology.
 
+- 2025-02 p5 が動かなくなった。Interactive な用途はいまは要らないので、切りはなす。

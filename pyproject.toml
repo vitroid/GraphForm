@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "graphform"
+version = "0.2"
+description = "Recover the 3D structure from a graph."
+authors = ["vitroid <vitroid@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+numpy = "^2.2.2"
+networkx = "^3.4.2"
+pillow = "^11.1.0"
+attrdict = "^2.0.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

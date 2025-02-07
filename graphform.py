@@ -1,14 +1,19 @@
 from logging import getLogger, basicConfig, INFO, DEBUG
 import sys
-from p5 import *
+from dataclasses import dataclass
+
+# from p5 import *
+import p5
 import itertools as it
 import sys
 import numpy as np
 import networkx as nx
-from attrdict import AttrDict
+
+# from attrdict import AttrDict
 from PIL.ImageFont import truetype
 
 __version__ = "0.1.1"
+
 
 class Interaction:
     def __init__(self, forcefunc):
@@ -30,6 +35,7 @@ def debug(func):
         logger = getLogger()
         logger.debug(func.__name__)
         func(*args, **kwargs)
+
     return wrapper
 
 
@@ -45,13 +51,13 @@ def ArrangedColor(a, b, c, decay):
     n = np.cross(ab, ac)
     n /= np.linalg.norm(n)
     hue = abs(np.sum(n)) / sqrt(3.0)
-    #hue = hue + 0.5
+    # hue = hue + 0.5
     if hue > 1.0:
         hue -= 1.0
     # final opacity is A+B
     A = 0.3
     B = 0.4
-    opacity = (1. - 0.99**decay) * A + B
+    opacity = (1.0 - 0.99**decay) * A + B
     return Color(hue, 0.8, abs(n[2]) * 0.4 + 0.6, alpha=opacity)
 
 
@@ -62,7 +68,13 @@ def perspective(v, eyepos=None):
     return v[:2] * zoom
 
 
-class Vertex():
+@dataclass
+class Triangle:
+    depth: Depth
+    color: ArrangedColor
+
+
+class Vertex:
     """
     A vertex is a point mass with a label.
     """
@@ -106,7 +118,7 @@ def drawfaces_(faces, vertices):
         triangle(a, b, c)
 
 
-class GraphForm():
+class GraphForm:
     @debug
     def __init__(self, pairs):
         self.repulse = 0
@@ -126,7 +138,7 @@ class GraphForm():
         R0 = 200
         #  立方体の一辺を1とすると面の対角線は√2、立方体の対角線は√3、隣接四面体間の距離は、√3/3
         # 面の対角線を1とするので、
-        RT = R0 * (1 / 6)**0.5
+        RT = R0 * (1 / 6) ** 0.5
         KT = 20
 
         self.attractive = Interaction(lambda r: K * (r - R0))
@@ -151,20 +163,18 @@ class GraphForm():
 
         self.g = nx.Graph(pairs)
         for i in labels:
-            #position, velocity, force
+            # position, velocity, force
             self.vertices[i] = Vertex(i)
 
         self.reps = [
-            (i, j) for i, j in it.combinations(
-                labels, 2) if not self.g.has_edge(
-                i, j)]
+            (i, j) for i, j in it.combinations(labels, 2) if not self.g.has_edge(i, j)
+        ]
 
         for i, j in self.g.edges():
             for v in self.g[j]:
                 if v in self.g[i]:
                     s = tuple(sorted([i, j, v]))
-                    self.triangles[s] = AttrDict(
-                        {"depth": None, "color": None})
+                    self.triangles[s] = Triangle(depth=None, color=None)
 
         for i, j, k in self.triangles:
             adj = tuple(set(self.g[i]) & set(self.g[j]) & set(self.g[k]))
@@ -202,13 +212,16 @@ class GraphForm():
     def drawfaces(self):
         for i, j, k in self.triangles.keys():
             self.triangles[(i, j, k)].depth = Depth(
-                self.vertices[i].position, self.vertices[j].position, self.vertices[k].position)
-            self.triangles[(i,
-                            j,
-                            k)].color = ArrangedColor(self.vertices[i].position,
-                                                      self.vertices[j].position,
-                                                      self.vertices[k].position,
-                                                      self.decay)
+                self.vertices[i].position,
+                self.vertices[j].position,
+                self.vertices[k].position,
+            )
+            self.triangles[(i, j, k)].color = ArrangedColor(
+                self.vertices[i].position,
+                self.vertices[j].position,
+                self.vertices[k].position,
+                self.decay,
+            )
         drawfaces_(self.triangles, self.vertices)
 
     def drawedges(self):
@@ -239,7 +252,7 @@ class GraphForm():
             self.repulsive.force(self.reps, self.vertices)
 
         # 常に四面体同士は重ならないようにする。
-         # if self.showtetrag:
+        # if self.showtetrag:
         for vertex in self.vtet.values():
             vertex.resetf()
         for tetra, vertex in self.vtet.items():
@@ -293,7 +306,7 @@ class GraphForm():
             if not self.keyhold:
                 if key == "s":
                     save("graphform.png")
-                    print ("Saved")
+                    print("Saved")
                 if key == "r":
                     if not self.repulse:
                         self.repulse = 1
@@ -311,11 +324,10 @@ class GraphForm():
         else:
             self.keyhold = None
 
-
     @debug
     def setup(self):
         size(512, 512)
-        color_mode('HSB', 1, 1, 1, 1)
+        color_mode("HSB", 1, 1, 1, 1)
         font = truetype("Arial.ttf", size=16)
         text_font(font)
 
@@ -326,9 +338,26 @@ if __name__ == "__main__":
     logger = getLogger()
     logger.debug("Debug mode.")
 
-    pairs = [("A", "B"), ("B", "C"), ("C", "D"), ("D", "E"), ("E", "F"), ("Z", "N"),
-             ("A", "Z"), ("B", "Z"), ("C", "Z"), ("D", "Z"), ("E", "Z"), ("F", "Z"),
-             ("A", "N"), ("B", "N"), ("C", "N"), ("D", "N"), ("E", "N"), ("F", "N"), ]
+    pairs = [
+        ("A", "B"),
+        ("B", "C"),
+        ("C", "D"),
+        ("D", "E"),
+        ("E", "F"),
+        ("Z", "N"),
+        ("A", "Z"),
+        ("B", "Z"),
+        ("C", "Z"),
+        ("D", "Z"),
+        ("E", "Z"),
+        ("F", "Z"),
+        ("A", "N"),
+        ("B", "N"),
+        ("C", "N"),
+        ("D", "N"),
+        ("E", "N"),
+        ("F", "N"),
+    ]
     gf = GraphForm(pairs)
 
     draw = gf.draw

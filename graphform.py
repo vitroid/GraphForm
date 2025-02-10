@@ -1,19 +1,9 @@
 from logging import getLogger, basicConfig, INFO, DEBUG
 import sys
-from dataclasses import dataclass
-
-# from p5 import *
-import p5
 import itertools as it
 import sys
 import numpy as np
 import networkx as nx
-
-# from attrdict import AttrDict
-from PIL.ImageFont import truetype
-
-__version__ = "0.1.1"
-
 
 class Interaction:
     def __init__(self, forcefunc):
@@ -39,48 +29,13 @@ def debug(func):
     return wrapper
 
 
-def Depth(pi, pj, pk):
-    return pi[2] + pj[2] + pk[2]
-
-
-def ArrangedColor(a, b, c, decay):
-    logger = getLogger()
-    ab = b - a
-    ac = c - a
-    # normal vector
-    n = np.cross(ab, ac)
-    n /= np.linalg.norm(n)
-    hue = abs(np.sum(n)) / sqrt(3.0)
-    # hue = hue + 0.5
-    if hue > 1.0:
-        hue -= 1.0
-    # final opacity is A+B
-    A = 0.3
-    B = 0.4
-    opacity = (1.0 - 0.99**decay) * A + B
-    return Color(hue, 0.8, abs(n[2]) * 0.4 + 0.6, alpha=opacity)
-
-
-def perspective(v, eyepos=None):
-    if eyepos is None:
-        return v[:2]
-    zoom = eyepos / (eyepos - v[2])
-    return v[:2] * zoom
-
-
-@dataclass
-class Triangle:
-    depth: Depth
-    color: ArrangedColor
-
-
 class Vertex:
     """
     A vertex is a point mass with a label.
     """
 
     def __init__(self, label, pos=None):
-        self.label = str(label)
+        self.label = label
         if pos is None:
             self.position = np.random.random(3) * 500
         else:
@@ -88,45 +43,24 @@ class Vertex:
         self.velocity = np.zeros(3)
         self.force = np.zeros(3)
 
-    def perspective(self, eyepos=None):
-        return perspective(self.position, eyepos)
-
     def force2vel(self):
         self.velocity = self.force + 0
 
     def progress(self, deltatime):
         self.position += self.velocity * deltatime
 
-    # def draw(self):
-    #     ellipse(self.position[0] - 1, self.position[1] - 1, 2, 2)
     def resetf(self):
         self.force = np.zeros(3)
 
 
-def drawfaces_(faces, vertices):
-    logger = getLogger()
-    stroke(0)
-    stroke_weight(2)
-    k = faces.keys()
-    for face in sorted(k, key=lambda x: -faces[x].depth):
-        # triangle = PShape()
-        va, vb, vc = face
-        a = vertices[va].perspective()
-        b = vertices[vb].perspective()
-        c = vertices[vc].perspective()
-        fill(faces[face].color)
-        triangle(a, b, c)
-
-
+def relax(g, node_pos=None, cell=None):
+    # 隣接情報gを立体化する。
 class GraphForm:
     @debug
     def __init__(self, pairs):
         self.repulse = 0
         self.hold = None
         self.keyhold = None
-        self.showface = True
-        self.showlabel = True
-        self.showtetrag = True
         self.decay = 0
         self.vertices = dict()
         self.triangles = dict()
@@ -193,49 +127,6 @@ class GraphForm:
         self.vtet = dict()
         for t in self.tetrag:
             self.vtet[t] = Vertex(t)
-
-    def drawtetranetwork(self):
-        tpos = dict()
-        for tetra in self.tetrag:
-            com = np.zeros(3)
-            for v in tetra:
-                com += self.vertices[v].position
-            tpos[tetra] = com / 4
-        for edge in self.tetrag.edges:
-            t1, t2 = edge
-            p1 = perspective(tpos[t1])
-            p2 = perspective(tpos[t2])
-            stroke(1 / 6, 1, 0.8)  # yellow
-            stroke_weight(4)
-            line(p1, p2)
-
-    def drawfaces(self):
-        for i, j, k in self.triangles.keys():
-            self.triangles[(i, j, k)].depth = Depth(
-                self.vertices[i].position,
-                self.vertices[j].position,
-                self.vertices[k].position,
-            )
-            self.triangles[(i, j, k)].color = ArrangedColor(
-                self.vertices[i].position,
-                self.vertices[j].position,
-                self.vertices[k].position,
-                self.decay,
-            )
-        drawfaces_(self.triangles, self.vertices)
-
-    def drawedges(self):
-        for a, b in self.g.edges():
-            vertex0 = self.vertices[a].perspective()
-            vertex1 = self.vertices[b].perspective()
-            line(vertex0, vertex1)
-
-    def drawlabels(self):
-        for v in self.vertices.values():
-            vv = v.perspective()
-            fill(0)
-            no_stroke()
-            text(v.label, vv[0], vv[1])
 
     def draw(self):
         logger = getLogger()

@@ -8,4 +8,4 @@ This is a simple tool to make a graph (connectivity information) three-dimension
 - Native Pygame?
 - Analyze and display the topology.
 
-- 2025-02 p5 が動かなくなった。Interactive な用途はいまは要らないので、切りはなす。
+- 2025-02 p5 が動かなくなった。Interactive な用途はいまは要らないので、切りはなす。→graph-relax

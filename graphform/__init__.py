@@ -4,6 +4,9 @@ import itertools as it
 import sys
 import numpy as np
 import networkx as nx
+from dataclasses import dataclass
+import py5
+
 
 class Interaction:
     def __init__(self, forcefunc):
@@ -29,6 +32,46 @@ def debug(func):
     return wrapper
 
 
+def Depth(pi, pj, pk):
+    return pi[2] + pj[2] + pk[2]
+
+
+def ArrangedColor(a, b, c, decay):
+    logger = getLogger()
+    ab = b - a
+    ac = c - a
+    # normal vector
+    n = np.cross(ab, ac)
+    n /= np.linalg.norm(n)
+    hue = abs(np.sum(n)) / 3.0**0.5
+    # hue = hue + 0.5
+    if hue > 1.0:
+        hue -= 1.0
+    # final opacity is A+B
+    A = 0.3
+    B = 0.4
+    opacity = (1.0 - 0.99**decay) * A + B
+    return py5.color(
+        hue,
+        0.8,
+        abs(n[2]) * 0.4 + 0.6,
+        # alpha=opacity,
+    )
+
+
+def perspective(v, eyepos=None):
+    if eyepos is None:
+        return v[:2]
+    zoom = eyepos / (eyepos - v[2])
+    return v[:2] * zoom
+
+
+@dataclass
+class Triangle:
+    depth: Depth
+    color: ArrangedColor
+
+
 class Vertex:
     """
     A vertex is a point mass with a label.
@@ -43,6 +86,9 @@ class Vertex:
         self.velocity = np.zeros(3)
         self.force = np.zeros(3)
 
+    def perspective(self, eyepos=None):
+        return perspective(self.position, eyepos)
+
     def force2vel(self):
         self.velocity = self.force + 0
 
@@ -53,14 +99,36 @@ class Vertex:
         self.force = np.zeros(3)
 
 
-def relax(g, node_pos=None, cell=None):
-    # 隣接情報gを立体化する。
+@dataclass
+class Triangle:
+    depth: Depth
+    color: ArrangedColor
+
+
+def drawfaces_(faces, vertices):
+    logger = getLogger()
+    py5.stroke(0)
+    py5.stroke_weight(2)
+    k = faces.keys()
+    for face in sorted(k, key=lambda x: -faces[x].depth):
+        # triangle = PShape()
+        va, vb, vc = face
+        a = vertices[va].perspective()
+        b = vertices[vb].perspective()
+        c = vertices[vc].perspective()
+        py5.fill(faces[face].color)
+        py5.triangle(*a, *b, *c)
+
+
 class GraphForm:
     @debug
     def __init__(self, pairs):
         self.repulse = 0
         self.hold = None
         self.keyhold = None
+        self.showface = True
+        self.showlabel = True
+        self.showtetrag = True
         self.decay = 0
         self.vertices = dict()
         self.triangles = dict()
@@ -128,18 +196,61 @@ class GraphForm:
         for t in self.tetrag:
             self.vtet[t] = Vertex(t)
 
+    def drawtetranetwork(self):
+        tpos = dict()
+        for tetra in self.tetrag:
+            com = np.zeros(3)
+            for v in tetra:
+                com += self.vertices[v].position
+            tpos[tetra] = com / 4
+        for edge in self.tetrag.edges:
+            t1, t2 = edge
+            p1 = perspective(tpos[t1])
+            p2 = perspective(tpos[t2])
+            py5.stroke(1 / 6, 1, 0.8)  # yellow
+            py5.stroke_weight(4)
+            py5.line(*p1, *p2)
+
+    def drawfaces(self):
+        for i, j, k in self.triangles.keys():
+            self.triangles[(i, j, k)].depth = Depth(
+                self.vertices[i].position,
+                self.vertices[j].position,
+                self.vertices[k].position,
+            )
+            self.triangles[(i, j, k)].color = ArrangedColor(
+                self.vertices[i].position,
+                self.vertices[j].position,
+                self.vertices[k].position,
+                self.decay,
+            )
+        drawfaces_(self.triangles, self.vertices)
+
+    def drawedges(self):
+        for a, b in self.g.edges():
+            vertex0 = self.vertices[a].perspective()
+            vertex1 = self.vertices[b].perspective()
+            py5.line(vertex0, vertex1)
+
+    def drawlabels(self):
+        for v in self.vertices.values():
+            vv = v.perspective()
+            py5.fill(0)
+            py5.no_stroke()
+            py5.text(v.label, vv[0], vv[1])
+
     def draw(self):
         logger = getLogger()
-        background(1, 0, 1)  # hsb
+        py5.background(1, 0, 1)  # hsb
         self.frames += 1
         if self.frames == 100:
             self.repulse = 0
         self.decay += 1
         self.attractive.force(self.g.edges(), self.vertices)
         if self.repulse:
-            fill(0)
-            no_stroke()
-            text("Repulsive", 40, 40)
+            py5.fill(0)
+            py5.no_stroke()
+            py5.text("Repulsive", 40, 40)
             self.repulsive.force(self.reps, self.vertices)
 
         # 常に四面体同士は重ならないようにする。
@@ -162,7 +273,7 @@ class GraphForm:
             vertex.force2vel()
             vertex.progress(0.05)
             vertex.resetf()
-        stroke(0)
+        py5.stroke(0)
         if self.showface:
             self.drawfaces()
         else:
@@ -172,44 +283,44 @@ class GraphForm:
         if self.showtetrag:
             self.drawtetranetwork()
         # # マウスでノードをひっぱる。
-        if mouse_is_pressed:
+        if py5.is_mouse_pressed:
             decay = 0
             if self.hold is None:
                 min = 100000.0
                 nod = None
                 for vertex in self.vertices.values():
                     pixel = vertex.perspective()
-                    dx = mouse_x - pixel[0]
-                    dy = mouse_y - pixel[1]
+                    dx = py5.mouse_x - pixel[0]
+                    dy = py5.mouse_y - pixel[1]
                     d = dx**2 + dy**2
                     if d < min:
                         min = d
                         self.hold = vertex
             pixel = self.hold.perspective()
-            dx = mouse_x - pixel[0]
-            dy = mouse_y - pixel[1]
+            dx = py5.mouse_x - pixel[0]
+            dy = py5.mouse_y - pixel[1]
             self.hold.position[0] += dx / 2
             self.hold.position[1] += dy / 2
         else:
             self.hold = None
 
-        if key_is_pressed:
+        if py5.is_key_pressed:
             if not self.keyhold:
-                if key == "s":
-                    save("graphform.png")
+                if py5.key == "s":
+                    py5.save("graphform.png")
                     print("Saved")
-                if key == "r":
+                if py5.key == "r":
                     if not self.repulse:
                         self.repulse = 1
                     else:
                         self.repulse -= 1
-                if key == "f":
+                if py5.key == "f":
                     self.showface = not self.showface
-                if key == "l":
+                if py5.key == "l":
                     self.showlabel = not self.showlabel
-                if key == "t":
+                if py5.key == "t":
                     self.showtetrag = not self.showtetrag
-                if key == "q":
+                if py5.key == "q":
                     sys.exit(0)
             self.keyhold = True
         else:
@@ -217,13 +328,13 @@ class GraphForm:
 
     @debug
     def setup(self):
-        size(512, 512)
-        color_mode("HSB", 1, 1, 1, 1)
-        font = truetype("Arial.ttf", size=16)
-        text_font(font)
+        py5.size(512, 512)
+        py5.color_mode("HSB", 1, 1, 1, 1)
+        font = py5.truetype("Arial.ttf", size=16)
+        py5.text_font(font)
 
 
-if __name__ == "__main__":
+def test():
     # basicConfig(level=INFO, format="%(levelname)s %(message)s")
     basicConfig(level=DEBUG, format="%(levelname)s %(message)s")
     logger = getLogger()
@@ -253,4 +364,8 @@ if __name__ == "__main__":
 
     draw = gf.draw
     setup = gf.setup
-    run()
+    py5.run_sketch()
+
+
+if __name__ == "__main__":
+    test()

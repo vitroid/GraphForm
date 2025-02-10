@@ -8,11 +8,11 @@ readme = "README.md"
 
 [tool.poetry.dependencies]
 python = "^3.11"
-p5 = "^0.8.0"
 numpy = "^2"
 networkx = "^3.4.2"
-pillow = "^9.0.0"
 attrdict = "^2.0.1"
+py5 = "^0.10.4a2"
+install-jdk = "^1.1.0"
 
 
 [build-system]
